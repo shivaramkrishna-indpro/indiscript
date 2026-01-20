@@ -16,11 +16,11 @@ const Codeeditor = () => {
     basic: language === "kannada" ? 
       `// Basic variable and print\nsrsti name = "IndScript"\nmudrisu name` :
       `// Basic variable and print\nsrsti name = "IndScript"\nmudran name`,
-    
+
     loops: language === "kannada" ? 
       `// Loop example\nchakkra (srsti i = 1; i <= 3; i = i + 1) {\n    mudrisu "Count: " + i\n}` :
       `// Loop example\nchakra (srsti i = 1; i <= 3; i = i + 1) {\n    mudran "Count: " + i\n}`,
-    
+
     conditions: language === "kannada" ? 
       `// Condition example\nsrsti age = 20\nonduVele (age >= 18) {\n    mudrisu "Adult"\n} illadiddare {\n    mudrisu "Minor"\n}` :
       `// Condition example\nsrsti age = 20\nyadhi (age >= 18) {\n    mudran "Adult"\n} anyatha {\n    mudran "Minor"\n}`
@@ -143,15 +143,11 @@ const Codeeditor = () => {
       'vyakti', 'tuppada', 'suchi'
     ];
 
-    // Escape HTML first
+    // Escape HTML only for the overlay, not for textarea
     let escaped = code
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-
-    // Tokenize the code to prevent overlapping replacements
-    const tokens = [];
-    let currentIndex = 0;
 
     // Process line by line to handle comments properly
     const lines = escaped.split('\n');
@@ -313,14 +309,6 @@ const Codeeditor = () => {
           ))}
         </div>
         <div className="editor-wrapper">
-          {code && (
-            <div
-              ref={highlightRef}
-              className="syntax-highlight-overlay"
-              dangerouslySetInnerHTML={{ __html: highlightSyntax(code) }}
-              aria-hidden="true"
-            />
-          )}
           <textarea
             ref={textareaRef}
             className="codeEditor"

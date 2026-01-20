@@ -168,7 +168,6 @@ function parser(tokens, keywords) {
         tokens[0].value === "="
       ) {
         tokens.shift(); // Consume '='
-        // If next token is a string, use its value as a string literal
         if (tokens.length > 0 && tokens[0].type === "string") {
           value = '"' + tokens.shift().value + '"';
         } else {
@@ -178,7 +177,12 @@ function parser(tokens, keywords) {
             tokens[0].type !== "keyword" &&
             tokens[0].value !== "}"
           ) {
-            expression += tokens.shift().value;
+            // If identifier, use as is, else just append value
+            if (tokens[0].type === "identifier") {
+              expression += tokens.shift().value;
+            } else {
+              expression += tokens.shift().value;
+            }
           }
           value = expression.trim();
         }
@@ -195,16 +199,19 @@ function parser(tokens, keywords) {
       if (tokens.length === 0) {
         throw new Error("Expected expression after 'mudrisu'");
       }
-      let expressionToken = tokens.shift();
-      let expression;
-      if (expressionToken.type === "string") {
-        expression = '"' + expressionToken.value + '"';
-      } else {
-        expression = expressionToken.value;
+      // Build print expression from all tokens until end of statement/keyword/brace
+      let exprTokens = [];
+      while (tokens.length > 0 && tokens[0].type !== "keyword" && tokens[0].value !== "}" && tokens[0].type !== "semicolon") {
+        let t = tokens.shift();
+        if (t.type === "string") {
+          exprTokens.push('"' + t.value + '"');
+        } else {
+          exprTokens.push(t.value);
+        }
       }
       ast.body.push({
         type: "Print",
-        expression: expression,
+        expression: exprTokens.join("")
       });
     }
 
@@ -278,7 +285,29 @@ function parser(tokens, keywords) {
       }
       tokens.shift(); // Consume '('
 
-      let init = parseExpression();
+      // Support variable declaration in for loop init
+      let init = null;
+      if (tokens[0].type === "keyword" && tokens[0].value === keywords[0]) {
+        // Variable declaration in for loop (srsti/let)
+        tokens.shift();
+        let varName = tokens.shift().value;
+        let value = null;
+        if (tokens.length > 0 && tokens[0].type === "operator" && tokens[0].value === "=") {
+          tokens.shift();
+          if (tokens.length > 0 && tokens[0].type === "string") {
+            value = '"' + tokens.shift().value + '"';
+          } else {
+            let expr = "";
+            while (tokens.length > 0 && tokens[0].type !== "semicolon") {
+              expr += tokens.shift().value;
+            }
+            value = expr.trim();
+          }
+        }
+        init = { type: "LetDecleration", name: varName, value: value };
+      } else {
+        init = parseExpression();
+      }
       if (tokens.length === 0 || tokens[0].type !== "semicolon") {
         throw new Error("Expected ';' after for loop initialization");
       }
@@ -290,7 +319,12 @@ function parser(tokens, keywords) {
       }
       tokens.shift(); // Consume ';'
 
-      let increment = parseExpression();
+      // Parse increment expression up to ')'
+      let increment = "";
+      while (tokens.length > 0 && !(tokens[0].type === "paren" && tokens[0].value === ")")) {
+        increment += tokens.shift().value;
+      }
+      increment = increment.trim();
       if (tokens.length === 0 || tokens[0].value !== ")") {
         throw new Error("Expected ')' after for loop increment");
       }
@@ -312,7 +346,7 @@ function parser(tokens, keywords) {
 
       ast.body.push({
         type: "ForLoop",
-        init: init.trim(),
+        init: init,
         condition: condition.trim(),
         increment: increment.trim(),
         body: parser(body, keywords)
@@ -469,7 +503,11 @@ function codeGen(node) {
         (node.elseBody ? ` else {\n${codeGen(node.elseBody)}\n}` : "")
       );
     case "ForLoop":
-      return `for (${node.init}; ${node.condition}; ${node.increment}) {\n${codeGen(node.body)}\n}`;
+      // If init is an object, it's a let declaration
+      let forInit = typeof node.init === "object" && node.init.type === "LetDecleration"
+        ? codeGen(node.init).replace(/;$/, "")
+        : node.init;
+      return `for (${forInit}; ${node.condition}; ${node.increment}) {\n${codeGen(node.body)}\n}`;
     case "WhileLoop":
       return `while (${node.condition}) {\n${codeGen(node.body)}\n}`;
     case "FunctionDeclaration":

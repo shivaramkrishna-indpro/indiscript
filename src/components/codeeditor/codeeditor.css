@@ -343,12 +343,12 @@
     font-size: 15px;
     line-height: 24px;
     outline: none;
-    background: transparent;
-    color: transparent;
+    background: #181c23;
+    color: #fff;
     caret-color: #10ff00;
     letter-spacing: 0.3px;
     z-index: 2;
-    -webkit-text-fill-color: transparent;
+    -webkit-text-fill-color: #fff;
     overflow: auto;
 }
 
