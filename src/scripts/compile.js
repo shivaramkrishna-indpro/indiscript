@@ -159,12 +159,8 @@ function parser(tokens, keywords) {
       if (tokens.length === 0) {
         throw new Error("Expected variable name after 'srsti'");
       }
-      let declaration = {
-        type: "Decleration",
-        name: tokens.shift().value,
-        value: null,
-      };
-
+      let varName = tokens.shift().value;
+      let value = null;
       // Check for assignment
       if (
         tokens.length > 0 &&
@@ -172,17 +168,26 @@ function parser(tokens, keywords) {
         tokens[0].value === "="
       ) {
         tokens.shift(); // Consume '='
-        let expression = "";
-        while (
-          tokens.length > 0 &&
-          tokens[0].type !== "keyword" &&
-          tokens[0].value !== "}"
-        ) {
-          expression += tokens.shift().value;
+        // If next token is a string, use its value as a string literal
+        if (tokens.length > 0 && tokens[0].type === "string") {
+          value = '"' + tokens.shift().value + '"';
+        } else {
+          let expression = "";
+          while (
+            tokens.length > 0 &&
+            tokens[0].type !== "keyword" &&
+            tokens[0].value !== "}"
+          ) {
+            expression += tokens.shift().value;
+          }
+          value = expression.trim();
         }
-        declaration.value = expression.trim();
       }
-      ast.body.push(declaration);
+      ast.body.push({
+        type: "Decleration",
+        name: varName,
+        value: value,
+      });
     }
 
     if (token.type === "keyword" && token.value === keywords[1]) {
@@ -190,13 +195,13 @@ function parser(tokens, keywords) {
       if (tokens.length === 0) {
         throw new Error("Expected expression after 'mudrisu'");
       }
-      let expression = tokens.shift().value;
-
-      // If the expression is a string, handle it
-      if (tokens.length > 0 && tokens[0].type === "string") {
-        expression = tokens.shift().value;
+      let expressionToken = tokens.shift();
+      let expression;
+      if (expressionToken.type === "string") {
+        expression = '"' + expressionToken.value + '"';
+      } else {
+        expression = expressionToken.value;
       }
-
       ast.body.push({
         type: "Print",
         expression: expression,

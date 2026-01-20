@@ -38,14 +38,22 @@ function App() {
       </div>
       <footer
         style={{
-          backgroundColor: "white",
+          backgroundColor: "rgba(10, 14, 39, 0.95)",
           textAlign: "center",
-          padding: "10px 0",
+          padding: "25px 20px",
           fontWeight: "500",
+          borderTop: "1px solid rgba(14, 117, 0, 0.3)",
+          backdropFilter: "blur(10px)",
+          boxShadow: "0 -4px 20px rgba(14, 117, 0, 0.1)",
+          color: "#b8c5d6",
         }}
       >
         ⚡Built with Passion🔥by{" "}
-        <span style={{ color: "#0E7500", fontWeight: "600" }}>
+        <span style={{
+          color: "#10ff00",
+          fontWeight: "700",
+          textShadow: "0 0 10px rgba(14, 117, 0, 0.5)"
+        }}>
           Shiva Ram Krishna
         </span>
         🚀

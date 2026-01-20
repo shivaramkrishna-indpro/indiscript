@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import "./codeeditor.css";
 import { runner } from "../../scripts/compile";
 
@@ -9,6 +9,7 @@ const Codeeditor = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const textareaRef = useRef(null);
+  const highlightRef = useRef(null);
 
   // Sample code for different features
   const sampleCode = {
@@ -33,6 +34,14 @@ const Codeeditor = () => {
   // Handle code changes in the editor
   const handleEditorChange = (e) => {
     setCode(e.target.value);
+  };
+
+  // Sync scroll between textarea and highlight overlay
+  const handleScroll = (e) => {
+    if (highlightRef.current) {
+      highlightRef.current.scrollTop = e.target.scrollTop;
+      highlightRef.current.scrollLeft = e.target.scrollLeft;
+    }
   };
 
   // Handle keyboard shortcuts
@@ -125,6 +134,113 @@ const Codeeditor = () => {
     return Array.from({length: Math.max(lines, 10)}, (_, i) => i + 1);
   };
 
+  // Syntax highlighting function
+  const highlightSyntax = (code) => {
+    // Keywords for both languages
+    const keywords = [
+      'srsti', 'mudrisu', 'mudran', 'chakkra', 'chakra', 'onduVele', 'yadhi',
+      'illadiddare', 'anyatha', 'jabaki', 'yavat', 'kriya', 'karma', 'tippu',
+      'vyakti', 'tuppada', 'suchi'
+    ];
+
+    // Escape HTML first
+    let escaped = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Tokenize the code to prevent overlapping replacements
+    const tokens = [];
+    let currentIndex = 0;
+
+    // Process line by line to handle comments properly
+    const lines = escaped.split('\n');
+    const highlightedLines = lines.map(line => {
+      // Check if line contains a comment
+      const commentIndex = line.indexOf('//');
+
+      if (commentIndex !== -1) {
+        const beforeComment = line.substring(0, commentIndex);
+        const comment = line.substring(commentIndex);
+        return highlightLine(beforeComment) + `<span class="syntax-comment">${comment}</span>`;
+      } else {
+        return highlightLine(line);
+      }
+    });
+
+    return highlightedLines.join('\n');
+  };
+
+  const highlightLine = (line) => {
+    // Highlight strings first (they take precedence)
+    const stringRegex = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = stringRegex.exec(line)) !== null) {
+      // Add text before string
+      if (match.index > lastIndex) {
+        parts.push({ type: 'code', text: line.substring(lastIndex, match.index) });
+      }
+      // Add string
+      parts.push({ type: 'string', text: match[0] });
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < line.length) {
+      parts.push({ type: 'code', text: line.substring(lastIndex) });
+    }
+
+    // Now highlight the non-string parts
+    return parts.map(part => {
+      if (part.type === 'string') {
+        return `<span class="syntax-string">${part.text}</span>`;
+      } else {
+        return highlightCode(part.text);
+      }
+    }).join('');
+  };
+
+  const highlightCode = (text) => {
+    const keywords = [
+      'srsti', 'mudrisu', 'mudran', 'chakkra', 'chakra', 'onduVele', 'yadhi',
+      'illadiddare', 'anyatha', 'jabaki', 'yavat', 'kriya', 'karma', 'tippu',
+      'vyakti', 'tuppada', 'suchi'
+    ];
+
+    // Split by word boundaries while preserving whitespace and operators
+    const tokens = text.split(/(\s+|[+\-*/%=<>!&|(){}[\],;]+)/);
+
+    return tokens.map(token => {
+      if (!token) return token;
+
+      // Check if it's a keyword
+      if (keywords.includes(token)) {
+        return `<span class="syntax-keyword">${token}</span>`;
+      }
+
+      // Check if it's a number
+      if (/^\d+(\.\d+)?$/.test(token)) {
+        return `<span class="syntax-number">${token}</span>`;
+      }
+
+      // Check if it's an operator
+      if (/^[+\-*/%=<>!&|]+$/.test(token)) {
+        return `<span class="syntax-operator">${token}</span>`;
+      }
+
+      // Check if it's a variable (after srsti, tuppada, suchi)
+      // This is handled contextually in a second pass below
+
+      // Check if it's a function name (followed by parenthesis)
+      // This is also contextually handled below
+
+      return token;
+    }).join('');
+  };
+
   return (
     <div id="editorWrapper">
       <div className="editor-header">
@@ -184,7 +300,7 @@ const Codeeditor = () => {
             disabled={isRunning}
             className={isRunning ? "running" : ""}
           >
-            {isRunning ? "⏳ Running..." : "▶️ Run Code"}
+            {isRunning ? "⏳ Running..." : "Run Code"}
           </button>
         </div>
       </div>
@@ -196,15 +312,26 @@ const Codeeditor = () => {
             <div key={num} className="line-number">{num}</div>
           ))}
         </div>
-        <textarea
-          ref={textareaRef}
-          className="codeEditor"
-          placeholder={`Write your ${language === 'kannada' ? 'ಕನ್ನಡ' : 'संस्कृत'} IndScript code here...\n\nTry:\n${sampleCode.basic}`}
-          spellCheck="false"
-          value={code}
-          onChange={handleEditorChange}
-          onKeyDown={handleKeyDown}
-        />
+        <div className="editor-wrapper">
+          {code && (
+            <div
+              ref={highlightRef}
+              className="syntax-highlight-overlay"
+              dangerouslySetInnerHTML={{ __html: highlightSyntax(code) }}
+              aria-hidden="true"
+            />
+          )}
+          <textarea
+            ref={textareaRef}
+            className="codeEditor"
+            placeholder={`Write your ${language === 'kannada' ? 'ಕನ್ನಡ' : 'संस्कृत'} IndScript code here...\n\nTry:\n${sampleCode.basic}`}
+            spellCheck="false"
+            value={code}
+            onChange={handleEditorChange}
+            onKeyDown={handleKeyDown}
+            onScroll={handleScroll}
+          />
+        </div>
       </div>
 
       {/* Output Section */}
@@ -242,7 +369,7 @@ const Codeeditor = () => {
             <code>{language === 'kannada' ? 'mudrisu' : 'mudran'} x</code> - Print output
           </span>
           <span className="help-item">
-            <code>{language === 'kannada' ? 'onduVele' : 'yadhi'} (x > 5)</code> - Conditions
+            <code>{language === 'kannada' ? 'onduVele' : 'yadhi'} (x {">"} 5)</code> - Conditions
           </span>
           <span className="help-item">
             <code>{language === 'kannada' ? 'chakkra' : 'chakra'} (i=1; i{"<"}=5; i=i+1)</code> - Loops
@@ -282,7 +409,7 @@ const Codeeditor = () => {
                   </div>
                   <div className="syntax-item">
                     <h4>Conditions</h4>
-                    <code>{language === 'kannada' ? 'onduVele' : 'yadhi'} (x > 10) {'{'} {language === 'kannada' ? 'mudrisu' : 'mudran'} "Big" {'}'}</code>
+                    <code>{language === 'kannada' ? 'onduVele' : 'yadhi'} (x {">"} 10) {'{'} {language === 'kannada' ? 'mudrisu' : 'mudran'} "Big" {'}'}</code>
                   </div>
                   <div className="syntax-item">
                     <h4>For Loop</h4>
@@ -290,7 +417,7 @@ const Codeeditor = () => {
                   </div>
                   <div className="syntax-item">
                     <h4>While Loop</h4>
-                    <code>{language === 'kannada' ? 'jabaki' : 'yavat'} (x > 0) {'{'} x = x - 1 {'}'}</code>
+                    <code>{language === 'kannada' ? 'jabaki' : 'yavat'} (x {">"} 0) {'{'} x = x - 1 {'}'}</code>
                   </div>
                   <div className="syntax-item">
                     <h4>Functions</h4>
